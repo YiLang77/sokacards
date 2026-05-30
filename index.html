@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soka抽卡系統</title>
+<link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>✨ Soka抽卡系統 ✨</h1>
+
+    <div class="info">
+        剩餘卡片：
+        <span id="count">20</span>
+        張
+    </div>
+
+    <button class="draw-btn" onclick="drawCard()">
+        🎴 抽卡
+    </button>
+
+    <!-- <button class="reset-btn" onclick="resetCards()">
+        🔄 重置
+    </button> -->
+
+    <button id="cardInfoBtn" class="card-info-btn hidden" type="button" aria-label="查看卡片效果" onclick="showCardInfo()">
+        卡片效果
+    </button>
+
+    <!-- 卡片效果彈窗 -->
+    <div id="cardInfoModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="cardInfoTitle">
+        <div class="modal-backdrop" onclick="hideCardInfo()"></div>
+        <div class="modal-box">
+            <button class="modal-close" onclick="hideCardInfo()" aria-label="關閉">×</button>
+            <h2 id="cardInfoTitle">卡片效果</h2>
+            <div id="cardInfoContent" class="card-list"></div>
+        </div>
+    </div>
+
+    <div class="card-area" id="cardArea">
+
+        <div class="card normal">
+            <div class="rarity">
+                READY
+            </div>
+            <div class="desc">
+                點擊抽卡開始
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let originalCards = [
+
+    { rarity:"UR", class:"ur", name:"鼓勵5", img1:"img/out/鼓勵5_o.png", img2:"img/ins/鼓勵5_i.jpg" },
+    { rarity:"UR", class:"ur", name:"鼓勵9", img1:"img/out/鼓勵9_o.png", img2:"img/ins/鼓勵9_i.jpg" },
+    { rarity:"UR", class:"ur", name:"鼓勵10", img1:"img/out/鼓勵10_o.png", img2:"img/ins/鼓勵10_i.jpg" },
+    { rarity:"UR", class:"ur", name:"鼓勵14", img1:"img/out/鼓勵14_o.png", img2:"img/ins/鼓勵14_i.jpg" },
+    { rarity:"UR", class:"ur", name:"鼓勵16", img1:"img/out/鼓勵16_o.png", img2:"img/ins/鼓勵16_i.jpg" },
+    { rarity:"SSR", class:"ssr", name:"鼓勵1", img1:"img/out/鼓勵1_o.png", img2:"img/ins/鼓勵1_i.jpg" },
+    { rarity:"SSR", class:"ssr", name:"鼓勵2", img1:"img/out/鼓勵2_o.png", img2:"img/ins/鼓勵2_i.jpg" },
+    { rarity:"SSR", class:"ssr", name:"鼓勵4", img1:"img/out/鼓勵4_o.png", img2:"img/ins/鼓勵4_i.jpg" },
+    { rarity:"SSR", class:"ssr", name:"鼓勵6", img1:"img/out/鼓勵6_o.png", img2:"img/ins/鼓勵6_i.jpg" },
+    { rarity:"SSR", class:"ssr", name:"鼓勵7", img1:"img/out/鼓勵7_o.png", img2:"img/ins/鼓勵7_i.jpg" },
+    { rarity:"SSR", class:"ssr", name:"鼓勵15", img1:"img/out/鼓勵15_o.png", img2:"img/ins/鼓勵15_i.jpg" },
+    { rarity:"SSR", class:"ssr", name:"鼓勵17", img1:"img/out/鼓勵17_o.png", img2:"img/ins/鼓勵17_i.jpg" },
+    { rarity:"SR", class:"sr", name:"鼓勵3", img1:"img/out/鼓勵3_o.png", img2:"img/ins/鼓勵3_i.jpg" },
+    { rarity:"SR", class:"sr", name:"鼓勵8", img1:"img/out/鼓勵8_o.png", img2:"img/ins/鼓勵8_i.jpg" },
+    { rarity:"SR", class:"sr", name:"鼓勵11", img1:"img/out/鼓勵11_o.png", img2:"img/ins/鼓勵11_i.jpg" },
+    { rarity:"SR", class:"sr", name:"鼓勵12", img1:"img/out/鼓勵12_o.png", img2:"img/ins/鼓勵12_i.jpg" },
+    { rarity:"SR", class:"sr", name:"鼓勵13", img1:"img/out/鼓勵13_o.png", img2:"img/ins/鼓勵13_i.jpg" } 
+];
+
+let cards = [...originalCards];
+let currentCard = null;
+let isDrawing = false;
+
+function updateCount(){
+    document.getElementById("count").innerText = cards.length;
+}
+
+updateCount();
+
+/* 抽卡 */
+
+function drawCard(){
+
+    if(isDrawing) return;
+    isDrawing = true;
+
+    const drawBtn = document.querySelector('.draw-btn');
+    if(drawBtn) drawBtn.disabled = true;
+
+    const infoBtn = document.getElementById('cardInfoBtn');
+    if(infoBtn) infoBtn.classList.add('hidden');
+
+    if(cards.length <= 0){
+
+        document.getElementById("cardArea").innerHTML = `
+            <div class="card empty">
+                <div class="rarity">END</div>
+
+                <div class="name">
+                    卡池已空
+                </div>
+
+                <div class="desc">
+                    所有卡片都抽完了
+                </div>
+            </div>
+        `;
+
+        const drawBtn = document.querySelector('.draw-btn');
+        if(drawBtn) drawBtn.disabled = false;
+        isDrawing = false;
+        return;
+    }
+
+    /* ===== 抽卡前動畫 ===== */
+
+    document.getElementById("cardArea").innerHTML = `
+
+        <div class="summon-container">
+
+            <div class="magic-circle"></div>
+
+            <div class="summon-card">
+                ?
+            </div>
+
+        </div>
+
+    `;
+
+    createSummonParticles();
+
+    /* 延遲公布結果 */
+
+    setTimeout(()=>{
+
+        const randomIndex =
+            Math.floor(Math.random() * cards.length);
+
+        const card =
+            cards[randomIndex];
+
+        currentCard = card;
+        cards.splice(randomIndex,1);
+
+        updateCount();
+
+        let extraEffect = "";
+
+        if(card.rarity === "UR"){
+            extraEffect = "ur-effect";
+        }
+
+        document.getElementById("cardArea").innerHTML = `
+            <div class="card ${card.class} ${extraEffect}">
+
+                <div class="rarity">
+                    ${card.rarity}
+                </div>
+
+                <div class="cardimg">
+                    <img src="${card.img1}" alt="${card.name}" class="card-img">
+                </div>
+            </div>
+        `;
+
+        if(infoBtn) infoBtn.classList.remove('hidden');
+
+        const drawBtn = document.querySelector('.draw-btn');
+        if(drawBtn) drawBtn.disabled = false;
+        isDrawing = false;
+
+        createParticles(card.rarity);
+
+        screenFlash(card.rarity);
+
+        if(card.rarity === "UR"){
+            createURFire();
+        }
+
+    },2500);
+}
+
+/* 粒子特效 */
+
+function createParticles(rarity){
+
+    const area =
+        document.getElementById("cardArea");
+
+    let amount = 25;
+
+    if(rarity === "UR"){
+        amount = 60;
+    }
+    else if(rarity === "SSR"){
+        amount = 40;
+    }
+
+    for(let i=0;i<amount;i++){
+
+        const particle =
+            document.createElement("div");
+
+        particle.className = "particle";
+
+        let size =
+            Math.random() * 12 + 6;
+
+        particle.style.width =
+            size + "px";
+
+        particle.style.height =
+            size + "px";
+
+        particle.style.left = "50%";
+        particle.style.top = "50%";
+
+        particle.style.setProperty(
+            "--x",
+            (Math.random()-0.5)*800 + "px"
+        );
+
+        particle.style.setProperty(
+            "--y",
+            (Math.random()-0.5)*800 + "px"
+        );
+
+        if(rarity === "UR"){
+            particle.style.background = "gold";
+        }
+        else if(rarity === "SSR"){
+            particle.style.background = "#c084fc";
+        }
+        else if(rarity === "SR"){
+            particle.style.background = "#38bdf8";
+        }
+        else{
+            particle.style.background = "#cbd5e1";
+        }
+
+        area.appendChild(particle);
+
+        setTimeout(()=>{
+            particle.remove();
+        },1000);
+    }
+}
+
+/* 顯示 / 隱藏 卡片資訊彈窗 */
+function showCardInfo(){
+    const modal = document.getElementById('cardInfoModal');
+    const content = document.getElementById('cardInfoContent');
+    if(!modal || !content) return;
+
+    // 填充當前已抽卡片資訊，僅顯示一張
+    if(!currentCard){
+        content.innerHTML = '<p>尚未抽到卡片，請先抽卡。</p>';
+    } else {
+        content.innerHTML = `
+            <div class="card-list-item single-card">
+                <img src="${currentCard.img2}" alt="${currentCard.name}" class="card-thumb"> 
+            </div>
+        `;
+    }
+
+    modal.classList.remove('hidden');
+    // allow CSS transition
+    setTimeout(()=> modal.classList.add('open'), 10);
+    modal.setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+}
+
+function hideCardInfo(){
+    const modal = document.getElementById('cardInfoModal');
+    if(!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+    // wait for animation then hide from flow
+    setTimeout(()=> modal.classList.add('hidden'), 220);
+}
+
+/* 畫面閃光 */
+
+function screenFlash(rarity){
+
+    const flash =
+        document.createElement("div");
+
+    flash.style.position = "fixed";
+    flash.style.left = 0;
+    flash.style.top = 0;
+    flash.style.width = "100%";
+    flash.style.height = "100%";
+    flash.style.pointerEvents = "none";
+    flash.style.opacity = "0.5";
+    flash.style.zIndex = 9999;
+
+    if(rarity === "UR"){
+        flash.style.background = "gold";
+    }
+    else if(rarity === "SSR"){
+        flash.style.background = "#9333ea";
+    }
+    else{
+        flash.style.background = "white";
+    }
+
+    flash.style.animation =
+        "flashAnim 0.5s forwards";
+
+    document.body.appendChild(flash);
+
+    setTimeout(()=>{
+        flash.remove();
+    },500);
+}
+
+/* 重置 */
+
+function resetCards(){
+
+    cards = [...originalCards];
+
+    updateCount();
+
+    document.getElementById("cardArea").innerHTML = `
+        <div class="card normal">
+            <div class="rarity">
+                READY
+            </div>
+
+            <div class="name">
+                ?
+            </div>
+
+            <div class="desc">
+                卡池已重置
+            </div>
+        </div>
+    `;
+}
+
+/* UR 火焰爆發 */
+function createURFire(){
+
+    const area =
+    document.getElementById("cardArea");
+
+    for(let i=0;i<80;i++){
+
+        const fire = document.createElement("div");
+
+        fire.className = "fire-particle";
+
+        fire.style.left = "50%";
+        fire.style.top = "50%";
+
+        fire.style.setProperty(
+            "--fx",
+            (Math.random()-0.5)*1000 + "px"
+        );
+
+        fire.style.setProperty(
+            "--fy",
+            (Math.random()-0.5)*1000 + "px"
+        );
+
+        const size = Math.random()*20+10;
+
+        fire.style.width = size + "px";
+
+        fire.style.height = size + "px";
+
+        area.appendChild(fire);
+
+        setTimeout(()=>{
+            fire.remove();
+        },1200);
+    }
+}
+
+
+/* 抽卡召喚粒子 */
+function createSummonParticles(){
+
+    const area =
+    document.getElementById("cardArea");
+
+    for(let i=0;i<50;i++){
+
+        const particle =
+        document.createElement("div");
+
+        particle.className =
+        "particle";
+
+        const size =
+        Math.random()*10+4;
+
+        particle.style.width =
+        size+"px";
+
+        particle.style.height =
+        size+"px";
+
+        particle.style.left =
+        (Math.random()*100)+"%";
+
+        particle.style.top =
+        (Math.random()*100)+"%";
+
+        particle.style.background =
+        "cyan";
+
+        particle.style.setProperty(
+            "--x",
+            (Math.random()-0.5)*500+"px"
+        );
+
+        particle.style.setProperty(
+            "--y",
+            (Math.random()-0.5)*500+"px"
+        );
+
+        area.appendChild(particle);
+
+        setTimeout(()=>{
+            particle.remove();
+        },1000);
+    }
+}
+</script>
+
+</body>
+</html>
